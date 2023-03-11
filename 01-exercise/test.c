@@ -27,6 +27,20 @@ static void test_parse_null() {
     EXPECT_EQ_INT(KIKA_NULL, kika_get_type(&v));
 }
 
+static void test_parse_false() {
+    kika_value v;
+    v.type = KIKA_NULL;
+    EXPECT_EQ_INT(KIKA_PARSE_OK, kika_parse(&v, "false"));
+    EXPECT_EQ_INT(KIKA_FALSE, kika_get_type(&v));
+}
+
+static void test_parse_true() {
+    kika_value v;
+    v.type = KIKA_NULL;
+    EXPECT_EQ_INT(KIKA_PARSE_OK, kika_parse(&v, "true"));
+    EXPECT_EQ_INT(KIKA_TRUE, kika_get_type(&v));
+}
+
 static void test_parse_expect_value() {
     kika_value v;
 
@@ -59,6 +73,8 @@ static void test_parse_root_not_singular() {
 
 static void test_parse() {
     test_parse_null();
+    test_parse_false();
+    test_parse_true();
     test_parse_expect_value();
     test_parse_invalid_value();
     test_parse_root_not_singular();
