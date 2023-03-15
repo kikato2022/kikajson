@@ -1,6 +1,6 @@
 #include "kikajson.h"
 #include <assert.h>  /* assert() */
-#include <stdlib.h>  /* NULL */
+#include <stdlib.h>  /* NULL, strtod() */
 
 #define EXPECT(c, ch)       do { assert(*c->json == (ch)); c->json++; } while(0)
 
@@ -15,6 +15,8 @@ static void kika_parse_whitespace(kika_context* c) {
     c->json = p;
 }
 
+
+
 static int kika_parse_null(kika_context* c, kika_value* v) {
     EXPECT(c, 'n');
     if (c->json[0] != 'u' || c->json[1] != 'l' || c->json[2] != 'l')
@@ -24,11 +26,42 @@ static int kika_parse_null(kika_context* c, kika_value* v) {
     return KIKA_PARSE_OK;
 }
 
+static int kika_parse_false(kika_context* c, kika_value* v) {
+    EXPECT(c, 'f');
+    if (c->json[0] != 'a' || c->json[1] != 'l' || c->json[2] != 's' || c->json[3] != 'e')
+        return KIKA_PARSE_INVALID_VALUE;
+    c->json += 4;
+    v->type = KIKA_FALSE;
+    return KIKA_PARSE_OK;
+}
+
+static int kika_parse_true(kika_context* c, kika_value* v) {
+    EXPECT(c, 't');
+    if (c->json[0] != 'r' || c->json[1] != 'u' || c->json[2] != 'e')
+        return KIKA_PARSE_INVALID_VALUE;
+    c->json += 3;
+    v->type = KIKA_TRUE;
+    return KIKA_PARSE_OK;
+}
+
+static int kika_parse_number(kika_context* c, kika_value* v) {
+    char* end;
+    /* \TODO validate number */
+    v->n = strtod(c->json, &end);
+    if (c->json == end)
+        return KIKA_PARSE_INVALID_VALUE;
+    c->json = end;
+    v->type = KIKA_NUMBER;
+    return KIKA_PARSE_OK;
+}
+
 static int kika_parse_value(kika_context* c, kika_value* v) {
     switch (*c->json) {
         case 'n':  return kika_parse_null(c, v);
+        case 'f':  return kika_parse_false(c, v);
+        case 't':  return kika_parse_true(c, v);
         case '\0': return KIKA_PARSE_EXPECT_VALUE;
-        default:   return KIKA_PARSE_INVALID_VALUE;
+        default:   return kika_parse_number(c, v);
     }
 }
 
@@ -38,10 +71,21 @@ int kika_parse(kika_value* v, const char* json) {
     c.json = json;
     v->type = KIKA_NULL;
     kika_parse_whitespace(&c);
-    return kika_parse_value(&c, v);
+    int ret;
+    if ((ret = kika_parse_value(&c, v) )== KIKA_PARSE_OK) {
+        kika_parse_whitespace(&c);
+        if (*c.json != '\0')
+            return KIKA_PARSE_ROOT_NOT_SINGULAR;
+    }
+    return ret;
 }
 
 kika_type kika_get_type(const kika_value* v) {
     assert(v != NULL);
     return v->type;
+}
+
+double kika_get_number(const kika_value* v) {
+    assert(v != NULL && v->type == KIKA_NUMBER);
+    return v->n;
 }
